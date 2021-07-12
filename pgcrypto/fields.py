@@ -105,7 +105,8 @@ class BaseEncryptedField(models.Field):
             #    4. Encrypt the padded bytestring using the specified cipher.
             #    5. Armor the encrypted bytestring for storage in the text field.
             return armor(
-                self.encrypt(pad(force_str(value).encode(self.charset), self.block_size)), versioned=self.versioned,
+                self.encrypt(pad(force_str(value).encode(self.charset), self.block_size)),
+                versioned=self.versioned,
             )
         return value
 
