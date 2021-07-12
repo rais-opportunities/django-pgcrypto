@@ -109,6 +109,12 @@ class FieldTests(TestCase):
         self.assertEqual(obj.ssn, "")
         self.assertEqual(Employee.objects.filter(ssn="").count(), 1)
 
+    def test_blank_compare_with_non_blank(self):
+        obj = Employee.objects.create(name="Test User 2", date_hired=datetime.date.today(), email="test2@example.com")
+        self.assertEqual(obj.ssn, "")
+        self.assertNotEqual(obj.ssn, "NON_EMPTY_STRING")
+        obj.delete()
+
     def test_unique(self):
         with transaction.atomic():
             try:
