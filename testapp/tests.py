@@ -9,8 +9,10 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import connections, transaction
+from django.db import connection
 from django.db.utils import IntegrityError
 from django.test import TestCase
+
 
 from pgcrypto import __version__, armor, dearmor, pad, unpad
 from pgcrypto.fields import BaseEncryptedField
@@ -109,10 +111,30 @@ class FieldTests(TestCase):
         self.assertEqual(obj.ssn, "")
         self.assertEqual(Employee.objects.filter(ssn="").count(), 1)
 
-    def test_blank_compare_with_non_blank(self):
+    def test_empty_db_string_compare_with_non_blank(self):
         obj = Employee.objects.create(name="Test User 2", date_hired=datetime.date.today(), email="test2@example.com")
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                # Manually overwrite DB value to empty string
+                cursor.execute("UPDATE %s SET ssn = '' WHERE id = %%s;" % (obj._meta.db_table, ), [obj.pk])
+        obj.refresh_from_db()
         self.assertEqual(obj.ssn, "")
         self.assertNotEqual(obj.ssn, "NON_EMPTY_STRING")
+        # Try performing a bulk update in Django - in SQL dearmor("") throws an error "Corrupt ascii-armor"
+        Employee.objects.filter(**{"pk": obj.pk}).exclude(**{"ssn": "XYZ"}).update(**{"ssn": "XYZ"})
+        obj.delete()
+
+    def test_null_db_val_compare_with_non_blank(self):
+        obj = Employee.objects.create(name="Test User 3", date_hired=datetime.date.today(), email="test2@example.com",
+                                      ssn_nullable=None)
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                # Manually overwrite DB value to empty string
+                cursor.execute("UPDATE %s SET ssn_nullable = NULL WHERE id = %%s;" % (obj._meta.db_table,), [obj.pk])
+        obj.refresh_from_db()
+        self.assertEqual(obj.ssn_nullable, None)
+        self.assertNotEqual(obj.ssn_nullable, "NON_EMPTY_STRING")
+        Employee.objects.filter(**{"pk": obj.pk}).exclude(**{"ssn_nullable": "XYZ"}).update(**{"ssn_nullable": "XYZ"})
         obj.delete()
 
     def test_unique(self):
@@ -138,6 +160,7 @@ class FieldTests(TestCase):
             "name": forms.CharField,
             "age": forms.IntegerField,
             "ssn": forms.CharField,
+            "ssn_nullable": forms.CharField,
             "salary": forms.DecimalField,
             "date_hired": forms.DateField,
             "email": forms.EmailField,
