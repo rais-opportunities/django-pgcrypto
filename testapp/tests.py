@@ -8,11 +8,9 @@ from cryptography.hazmat.primitives.ciphers.algorithms import AES, Blowfish
 from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.db import connections, transaction
-from django.db import connection
+from django.db import connection, connections, transaction
 from django.db.utils import IntegrityError
 from django.test import TestCase
-
 
 from pgcrypto import __version__, armor, dearmor, pad, unpad
 from pgcrypto.fields import BaseEncryptedField
