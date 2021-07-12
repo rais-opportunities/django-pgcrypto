@@ -116,7 +116,7 @@ class FieldTests(TestCase):
         with transaction.atomic():
             with connection.cursor() as cursor:
                 # Manually overwrite DB value to empty string
-                cursor.execute("UPDATE %s SET ssn = '' WHERE id = %%s;" % (obj._meta.db_table, ), [obj.pk])
+                cursor.execute("UPDATE %s SET ssn = '' WHERE id = %%s;" % (obj._meta.db_table,), [obj.pk])
         obj.refresh_from_db()
         self.assertEqual(obj.ssn, "")
         self.assertNotEqual(obj.ssn, "NON_EMPTY_STRING")
@@ -125,8 +125,9 @@ class FieldTests(TestCase):
         obj.delete()
 
     def test_null_db_val_compare_with_non_blank(self):
-        obj = Employee.objects.create(name="Test User 3", date_hired=datetime.date.today(), email="test2@example.com",
-                                      ssn_nullable=None)
+        obj = Employee.objects.create(
+            name="Test User 3", date_hired=datetime.date.today(), email="test2@example.com", ssn_nullable=None
+        )
         with transaction.atomic():
             with connection.cursor() as cursor:
                 # Manually overwrite DB value to empty string
