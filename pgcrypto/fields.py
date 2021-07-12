@@ -241,11 +241,19 @@ class EncryptedLookup(Lookup):
             # Special case when looking for blank values, don't try to dearmor/decrypt (#23).
             return "%s %s" % (lhs, rhs), lhs_params + rhs_params
         params = lhs_params + [self.lhs.output_field.cipher_key] + rhs_params
-        return (
-            "convert_from(decrypt(dearmor(%s), %%s, '%s'), 'utf-8')%s %s"
-            % (lhs, self.lhs.output_field.cipher_name, self.lhs.output_field.field_cast, rhs),
-            params,
-        )
+        if isinstance(self.lhs.field, EncryptedCharField) or isinstance(self.lhs.field, EncryptedTextField):
+            # Special case when value in DB is an empty string - use NULL - otherwise dearmor explodes
+            return (
+                "COALESCE(convert_from(decrypt(dearmor(NULLIF(%s, '')), %%s, '%s'), 'utf-8'),%s)%s %s"
+                % (lhs, self.lhs.output_field.cipher_name, lhs, self.lhs.output_field.field_cast, rhs),
+                params,
+            )
+        else:
+            return (
+                "convert_from(decrypt(dearmor(%s), %%s, '%s'), 'utf-8')%s %s"
+                % (lhs, self.lhs.output_field.cipher_name, self.lhs.output_field.field_cast, rhs),
+                params,
+            )
 
 
 for lookup_name in ("exact", "gt", "gte", "lt", "lte"):
