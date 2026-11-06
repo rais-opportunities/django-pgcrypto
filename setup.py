@@ -30,7 +30,6 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Framework :: Django",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: BSD License",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 3",
         "Topic :: Database",
