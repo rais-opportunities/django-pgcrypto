@@ -74,7 +74,9 @@ class FieldTests(TestCase):
         try:
             with transaction.atomic(), connection.cursor() as c:
                 c.execute("SELECT encrypt('x'::bytea, 'key'::bytea, 'bf')")
-        except DatabaseError:
+        except DatabaseError as e:
+            if "Cipher cannot be initialized" not in str(e):
+                raise
             self.skipTest("this PostgreSQL server's pgcrypto cannot use Blowfish (OpenSSL 3 legacy cipher)")
 
     def test_query(self):
