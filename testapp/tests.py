@@ -9,7 +9,7 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import connection, connections, transaction
-from django.db.utils import IntegrityError
+from django.db.utils import DatabaseError, IntegrityError
 from django.test import TestCase
 
 from pgcrypto import __version__, armor, dearmor, pad, unpad
@@ -67,6 +67,16 @@ class FieldTests(TestCase):
         c = connections["default"].cursor()
         c.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
 
+    def skip_unless_db_has_blowfish(self):
+        # PostgreSQL built against OpenSSL 3 cannot use Blowfish: OpenSSL moved it to the legacy provider, which is
+        # not loaded by default. pgcrypto then fails with "Cipher cannot be initialized" on any query that decrypts
+        # a Blowfish field in the database. Encrypting and decrypting in Python (CryptoTests) still works.
+        try:
+            with transaction.atomic(), connection.cursor() as c:
+                c.execute("SELECT encrypt('x'::bytea, 'key'::bytea, 'bf')")
+        except DatabaseError:
+            self.skipTest("this PostgreSQL server's pgcrypto cannot use Blowfish (OpenSSL 3 legacy cipher)")
+
     def test_query(self):
         fixture_path = os.path.join(os.path.dirname(__file__), "fixtures", "employees.json")
         for obj in json.load(open(fixture_path, "r")):
@@ -86,11 +96,13 @@ class FieldTests(TestCase):
         self.assertEqual(Employee.objects.filter(salary__lt=decimal.Decimal("52000")).count(), 0)
 
     def test_date_lookups(self):
+        self.skip_unless_db_has_blowfish()
         self.assertEqual(Employee.objects.filter(date_hired="1999-01-23").count(), 1)
         self.assertEqual(Employee.objects.filter(date_hired__gte="1999-01-01").count(), 1)
         self.assertEqual(Employee.objects.filter(date_hired__gt="1981-01-01").count(), 2)
 
     def test_multi_lookups(self):
+        self.skip_unless_db_has_blowfish()
         self.assertEqual(Employee.objects.filter(date_hired__gt="1981-01-01", salary__lt=60000).count(), 1)
 
     def test_model_validation(self):
